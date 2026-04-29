@@ -15,6 +15,7 @@ out/
 .run/
 .assets/
 .claude/
+.blockbench/
 
 ### Eclipse ###
 .apt_generated
