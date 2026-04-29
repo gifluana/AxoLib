@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "axolib:block/axo_test_block"
+    }
+  }
+}
