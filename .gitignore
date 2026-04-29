@@ -13,7 +13,7 @@ out/
 !**/src/**/out/
 
 .run/
-assets/
+.assets/
 
 ### Eclipse ###
 .apt_generated
