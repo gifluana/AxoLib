@@ -1,11 +1,14 @@
 package com.lunazstudios.axolib.render;
 
+import com.lunazstudios.axolib.api.animatable.AxoActiveAnimation;
 import com.lunazstudios.axolib.cubic.AxoLoadedModel;
 import com.lunazstudios.axolib.cubic.AxoModelAnimator;
 import com.lunazstudios.axolib.cubic.AxoTransform;
 import com.lunazstudios.axolib.cubic.MolangHelper;
 import com.lunazstudios.axolib.cubic.data.animation.AxoAnimation;
 import com.lunazstudios.axolib.cubic.data.model.AxoModel;
+
+import java.util.List;
 import com.lunazstudios.axolib.cubic.data.model.AxoModelCube;
 import com.lunazstudios.axolib.cubic.data.model.AxoModelGroup;
 import com.lunazstudios.axolib.cubic.data.model.AxoModelQuad;
@@ -38,7 +41,23 @@ public class AxoModelRenderer {
                               PoseStack poseStack,
                               int packedLight,
                               int packedOverlay) {
-        AxoModel preparedModel = prepareModel(loaded, animName, animTick, partialTick, entity);
+        render(loaded, animName, List.of(), animTick, partialTick, entity, texture, bodyYaw,
+               buffers, poseStack, packedLight, packedOverlay);
+    }
+
+    public static void render(AxoLoadedModel loaded,
+                              String animName,
+                              List<AxoActiveAnimation> additional,
+                              float animTick,
+                              float partialTick,
+                              LivingEntity entity,
+                              Identifier texture,
+                              float bodyYaw,
+                              MultiBufferSource buffers,
+                              PoseStack poseStack,
+                              int packedLight,
+                              int packedOverlay) {
+        AxoModel preparedModel = prepareModel(loaded, animName, additional, animTick, partialTick, entity);
         VertexConsumer consumer = buffers.getBuffer(RenderTypes.entityCutout(texture));
 
         poseStack.pushPose();
@@ -59,7 +78,7 @@ public class AxoModelRenderer {
                               SubmitNodeCollector collector,
                               PoseStack poseStack,
                               int packedLight) {
-        AxoModel preparedModel = prepareModel(loaded, animName, animTick, partialTick, null);
+        AxoModel preparedModel = prepareModel(loaded, animName, List.of(), animTick, partialTick, null);
         collector.submitCustomGeometry(
             poseStack,
             RenderTypes.entityCutout(texture),
@@ -94,12 +113,13 @@ public class AxoModelRenderer {
                                       PoseStack poseStack,
                                       int packedLight,
                                       int packedOverlay) {
-        AxoModel preparedModel = prepareModel(loaded, animName, animTick, partialTick, entity);
+        AxoModel preparedModel = prepareModel(loaded, animName, List.of(), animTick, partialTick, entity);
         renderPreparedModel(preparedModel, poseStack, consumer, packedLight, packedOverlay);
     }
 
     private static AxoModel prepareModel(AxoLoadedModel loaded,
                                          String animName,
+                                         List<AxoActiveAnimation> additional,
                                          float animTick,
                                          float partialTick,
                                          LivingEntity entity) {
@@ -110,11 +130,20 @@ public class AxoModelRenderer {
         }
         if (animName != null && loaded.animations.has(animName)) {
             AxoAnimation anim = loaded.animations.get(animName);
-            int len = anim.durationTicks();
-            float tick = (len > 0 && anim.loop) ? (animTick % len) : Math.min(animTick, len);
-            AxoModelAnimator.animate(model, anim, tick, 1f);
+            AxoModelAnimator.animate(model, anim, loopedTick(anim, animTick), 1f);
+        }
+        for (AxoActiveAnimation layer : additional) {
+            if (loaded.animations.has(layer.id())) {
+                AxoAnimation anim = loaded.animations.get(layer.id());
+                AxoModelAnimator.animate(model, anim, loopedTick(anim, animTick), layer.weight());
+            }
         }
         return model;
+    }
+
+    private static float loopedTick(AxoAnimation anim, float animTick) {
+        int len = anim.durationTicks();
+        return (len > 0 && anim.loop) ? (animTick % len) : Math.min(animTick, len);
     }
 
     private static void renderPreparedModel(AxoModel model,

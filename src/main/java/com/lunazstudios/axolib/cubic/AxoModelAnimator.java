@@ -1,6 +1,8 @@
 package com.lunazstudios.axolib.cubic;
 
+import com.lunazstudios.axolib.api.animatable.AxoAnimationEventHandler;
 import com.lunazstudios.axolib.cubic.data.animation.AxoAnimation;
+import com.lunazstudios.axolib.cubic.data.animation.AxoAnimationEvent;
 import com.lunazstudios.axolib.cubic.data.animation.AxoAnimationPart;
 import com.lunazstudios.axolib.cubic.data.model.AxoModel;
 import com.lunazstudios.axolib.cubic.data.model.AxoModelGroup;
@@ -37,6 +39,10 @@ public class AxoModelAnimator {
             current.rotate.x = lerpYaw(current.rotate.x, (float) rvx + initial.rotate.x, blend);
             current.rotate.y = lerpYaw(current.rotate.y, (float) rvy + initial.rotate.y, blend);
             current.rotate.z = lerpYaw(current.rotate.z, (float) rvz + initial.rotate.z, blend);
+
+            if (part.visibility != null) {
+                group.visible = part.visibility.evaluate(tick);
+            }
         }
 
         for (AxoModelGroup child : group.children) {
@@ -51,5 +57,40 @@ public class AxoModelAnimator {
     private static float lerpYaw(float a, float b, float t) {
         float delta = ((b - a) % 360 + 540) % 360 - 180;
         return a + delta * t;
+    }
+
+    /**
+     * Dispatches animation events whose {@code timeTicks} falls in the window
+     * {@code (prevTick, currentTick]}, accounting for looping animations.
+     * {@code prevTick} and {@code currentTick} are raw (non-looped) tick values.
+     */
+    public static void dispatchEvents(AxoAnimation animation, float prevTick, float currentTick,
+                                      AxoAnimationEventHandler handler) {
+        if (animation.events.isEmpty()) return;
+        int len = animation.durationTicks();
+
+        if (!animation.loop || len <= 0) {
+            for (AxoAnimationEvent event : animation.events) {
+                float t = event.timeTicks();
+                if (t > prevTick && t <= currentTick) handler.handle(event);
+            }
+            return;
+        }
+
+        float prev = prevTick % len;
+        float curr = currentTick % len;
+
+        if (curr >= prev) {
+            for (AxoAnimationEvent event : animation.events) {
+                float t = event.timeTicks();
+                if (t > prev && t <= curr) handler.handle(event);
+            }
+        } else {
+            // Loop boundary crossed this frame
+            for (AxoAnimationEvent event : animation.events) {
+                float t = event.timeTicks();
+                if (t > prev || t <= curr) handler.handle(event);
+            }
+        }
     }
 }

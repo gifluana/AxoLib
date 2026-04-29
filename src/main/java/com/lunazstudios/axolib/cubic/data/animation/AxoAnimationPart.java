@@ -5,6 +5,8 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.lunazstudios.axolib.cubic.keyframes.MolangKeyframe;
 import com.lunazstudios.axolib.cubic.keyframes.MolangKeyframeChannel;
+import com.lunazstudios.axolib.cubic.keyframes.VisibilityKeyframeChannel;
+import org.jspecify.annotations.Nullable;
 import com.lunazstudios.axolib.math.Constant;
 import com.lunazstudios.axolib.math.molang.MolangParser;
 import com.lunazstudios.axolib.math.molang.expressions.MolangExpression;
@@ -20,13 +22,27 @@ public class AxoAnimationPart {
     public final MolangKeyframeChannel sx = new MolangKeyframeChannel();
     public final MolangKeyframeChannel sy = new MolangKeyframeChannel();
     public final MolangKeyframeChannel sz = new MolangKeyframeChannel();
+    public @Nullable VisibilityKeyframeChannel visibility;
 
     public void fromJson(com.google.gson.JsonObject obj, MolangParser parser) {
-        if (obj.has("translate")) parseTriple(tx, ty, tz, obj.get("translate"), parser);
-        if (obj.has("position"))  parseTriple(tx, ty, tz, obj.get("position"),  parser);
-        if (obj.has("rotate"))    parseTriple(rx, ry, rz, obj.get("rotate"),    parser);
-        if (obj.has("rotation"))  parseTriple(rx, ry, rz, obj.get("rotation"),  parser);
-        if (obj.has("scale"))     parseTriple(sx, sy, sz, obj.get("scale"),     parser);
+        if (obj.has("translate"))   parseTriple(tx, ty, tz, obj.get("translate"), parser);
+        if (obj.has("position"))    parseTriple(tx, ty, tz, obj.get("position"),  parser);
+        if (obj.has("rotate"))      parseTriple(rx, ry, rz, obj.get("rotate"),    parser);
+        if (obj.has("rotation"))    parseTriple(rx, ry, rz, obj.get("rotation"),  parser);
+        if (obj.has("scale"))       parseTriple(sx, sy, sz, obj.get("scale"),     parser);
+        if (obj.has("visibility"))  parseVisibility(obj.getAsJsonArray("visibility"));
+    }
+
+    private void parseVisibility(JsonArray arr) {
+        visibility = new VisibilityKeyframeChannel();
+        for (JsonElement el : arr) {
+            if (!el.isJsonArray()) continue;
+            JsonArray entry = el.getAsJsonArray();
+            if (entry.size() < 2) continue;
+            float tick = entry.get(0).getAsFloat() * 20f;
+            boolean vis = entry.get(1).getAsBoolean();
+            visibility.add(tick, vis);
+        }
     }
 
     private void parseTriple(MolangKeyframeChannel cx, MolangKeyframeChannel cy, MolangKeyframeChannel cz,
